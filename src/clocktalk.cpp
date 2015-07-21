@@ -59,7 +59,7 @@ CtSymbols::CtSymbols()
 		m_symbol_map[CT_M] = CwSymbol(0u, 5u, dots, dashes, 0);
 	}
 	{
-		unsigned int dots[6] = { 1,1,1,1,1,0 };
+		unsigned int dots[6] = { 1,0,0,0,1,0 };
 		unsigned int dashes[5] = { 1,1,1,1,0 };
 		m_symbol_map[CT_N] = CwSymbol(0u, 5u, dots, dashes, 0);
 	}

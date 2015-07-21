@@ -62,6 +62,10 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>libclickwise.lib;lodelib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <HeapReserveSize>250</HeapReserveSize>
+      <HeapCommitSize>80</HeapCommitSize>
+      <StackReserveSize>80</StackReserveSize>
+      <StackCommitSize>40</StackCommitSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

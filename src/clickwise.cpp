@@ -94,7 +94,7 @@ CwSymbol::CwSymbol(
 
 	for (unsigned int i = 0; i < 5; ++i)
 	{
-		dash_value |= (dash[4 - i] << (i + 1));
+		dash_value |= (dash[4 - i] << i);
 	}
 	SetSym(height, width, dot_value, dash_value, unknown);
 }
@@ -116,7 +116,7 @@ CwSymbol::CwSymbol(
 
 	for (unsigned int i = 0; i < 5; ++i)
 	{
-		dash_value |= (dash[4 - i] << (i + 1));
+		dash_value |= (dash[4 - i] << i);
 	}
 	SetSym(height, width, dot_value, dash_value, unknown);
 }
@@ -271,39 +271,47 @@ CwSymbolBrush::CwSymbolBrush(unsigned int width,
 void CwImage::DrawDot(float x, float y)
 {
 	unsigned int min_x = (unsigned int)floor(x - (float)this->m_brush->m_dot_radius);
-	unsigned int max_x = (unsigned int)ceil(x + (float)this->m_brush->m_dot_radius);
+	unsigned int max_x = (unsigned int)floor(x + (float)this->m_brush->m_dot_radius);
 	unsigned int min_y = (unsigned int)floor(y - (float)this->m_brush->m_dot_radius);
-	unsigned int max_y = (unsigned int)ceil(y + (float)this->m_brush->m_dot_radius);
-	assert(min_x > 0);
-	assert(max_x < this->m_width);
-	assert(min_y > 0);
-	assert(max_y < this->m_height);
+	unsigned int max_y = (unsigned int)floor(y + (float)this->m_brush->m_dot_radius);
+	assert(min_x >= 0);
+	assert(max_x <= this->m_width);
+	assert(min_y >= 0);
+	assert(max_y <= this->m_height);
 	//Weird rasterization
 	//Should be improved to a symetrical algorithm
-	float rad = pow((float)this->m_brush->m_dot_radius + 0.51f,2.0f);
-	for (unsigned int j = min_y; j <= max_y; ++j)
+	unsigned int width = max_x - min_x;
+	unsigned int *line = new unsigned int[width];
+	for (unsigned int j = min_y; j < max_y; ++j)
 	{
-		for (unsigned int i = min_x; i <= max_x; ++i)
+		this->ReadLine(width, min_x, j, line);
+		for (unsigned int i = 0; i < width; ++i)
 		{
-			float dist = pow(x - i, 2.0f) + pow(y - j, 2.0f);
-			if (dist < rad)
+			float x_dist = (x - ((float)(min_x + i)));
+			float y_dist = (y - (float)j);
+			float c_dist = pow(x_dist, 2.0f) + pow(y_dist, 2.0f);
+			float r_dist = pow((float)m_brush->m_dot_radius, 2.0f);
+			if (c_dist < r_dist)
 			{
-				this->SetPixel(i, j, this->m_brush->m_dot_color);
+				//TODO: Blending
+				line[i] = this->m_brush->m_dot_color;
 			}
 		}
+		this->BltLine(width, 1, min_x, j, line);
 	}
+	delete[] line;
 }
 
 void CwImage::DrawDash(float x, float y, unsigned int height)
 {
 	unsigned int min_x = (unsigned int)floor(x - ((float)this->m_brush->m_dash_width / 2.0f));
-	unsigned int max_x = (unsigned int)ceil(x + ((float)this->m_brush->m_dash_width / 2.0f));
+	unsigned int max_x = (unsigned int)floor(x + ((float)this->m_brush->m_dash_width / 2.0f));
 	unsigned int min_y = (unsigned int)floor(y);
-	unsigned int max_y = (unsigned int)ceil(y) + height;
-	assert(min_x > 0);
-	assert(max_x < this->m_width);
-	assert(min_y > 0);
-	assert(max_y < this->m_height);
+	unsigned int max_y = (unsigned int)floor(y) + height;
+	assert(min_x >= 0);
+	assert(max_x <= this->m_width);
+	assert(min_y >= 0);
+	assert(max_y <= this->m_height);
 	unsigned int width = max_x - min_x;
 	//unsigned int height = max_y - min_y;
 	unsigned int *line = new unsigned int[width];
@@ -317,10 +325,10 @@ void CwImage::DrawDash(float x, float y, unsigned int height)
 
 void CwImage::DrawBox(unsigned int x, unsigned int y, unsigned int width, unsigned int height)
 {
-	assert(x > 0);
-	assert(x+width < this->m_width);
-	assert(y > 0);
-	assert(y+height < this->m_height);
+	assert(x >= 0);
+	assert(x+width <= this->m_width);
+	assert(y >= 0);
+	assert(y+height <= this->m_height);
 	unsigned int *line = new unsigned int[width];
 	for (unsigned int i = 0; i < width; ++i)
 	{
@@ -334,8 +342,8 @@ void CwImage::DrawUnknown(float x, float y, float width, float height)
 {
 	unsigned int min_x = (unsigned int)floor(x);
 	unsigned int min_y = (unsigned int)floor(y);
-	unsigned int max_x = (unsigned int)ceil(x + width);
-	unsigned int max_y = (unsigned int)ceil(y + height);
+	unsigned int max_x = (unsigned int)floor(x + width);
+	unsigned int max_y = (unsigned int)floor(y + height);
 	unsigned int aligned_width = (unsigned int)ceil(width);
 	unsigned int *line = new unsigned int[aligned_width];
 	for (int i = 0; i < width; ++i)
@@ -397,7 +405,7 @@ unsigned int CwImage::DrawSymbol(unsigned int x, unsigned int y, CwSymbol * sym)
 			}
 			if (val.fields.dot & (1 << (5-i)))
 			{
-				this->DrawDot(0.0f, 0.0f);
+				this->DrawDot(f_x, f_y);
 			}
 			f_y += cell_height;
 		}
@@ -420,6 +428,15 @@ void CwImage::SetPixel(unsigned int x, unsigned int y, unsigned int value)
 	this->m_image_data[addr] = value;
 }
 
+
+void CwImage::ReadLine(unsigned int width, unsigned int min_x, unsigned int min_y, unsigned int * line)
+{
+	unsigned int pitch = this->m_width; // Should auto-align to 32 bit values
+	unsigned int offset = min_x + (pitch * min_y);
+	unsigned int *img_ptr = m_image_data + offset;
+	memcpy(line, img_ptr, width * sizeof(unsigned int));
+}
+
 void CwImage::BltLine(unsigned int width, unsigned int height, unsigned int min_x, unsigned int min_y, unsigned int * line)
 {
 	unsigned int pitch = this->m_width; // Should auto-align to 32 bit values
@@ -437,16 +454,25 @@ unsigned int CwImage::RGBA(unsigned char r, unsigned char g, unsigned char b, un
 	return (0xFF000000 & r << 24) | (0xFF0000 & g << 16) | (0xFF00 & b << 8) | (0xFF & a);
 }
 
+void CwImage::FreeData()
+{
+	if (m_image_data != NULL)
+	{
+		delete[] m_image_data;
+		m_image_data = NULL;
+	}
+}
+
 CwImage::CwImage(unsigned int width, unsigned int height)
 {
 	m_width = width;
 	m_height = height;
-	m_image_data = new unsigned int[m_width*m_height];
+	m_image_data = NULL;
 }
 
 void CwImage::DrawStream(CwSymbolStream * stream)
 {
-	delete[] m_image_data;
+	FreeData();
 	unsigned int length = stream->Size();
 	this->m_width = ((this->m_brush->m_pad + this->m_brush->m_width) * length) + this->m_brush->m_pad;
 	this->m_height = (this->m_brush->m_pad * 2) + this->m_brush->m_height;
@@ -478,6 +504,36 @@ void CwImage::SetBrush(CwSymbolBrush * brush)
 bool CwImage::SaveToFile(char * filename)
 {
 	return false;
+}
+
+void CwImage::Test()
+{
+	FreeData();
+	m_width = 32;
+	m_height = 32;
+	m_image_data = new unsigned int[m_width*m_height];
+	m_background_color =   0xFF000000; //ABGR
+	m_brush->m_box_color = 0xFF000000;
+	DrawBox(0, 0, 32, 32);
+	SaveToFile("clear.png");
+	m_brush->m_dot_radius = 4.0f;
+	DrawDot(16, 16);
+	SaveToFile("dot.png");
+	DrawBox(0, 0, 32, 32);
+	m_brush->m_box_color = 0xFF0000FF;
+	DrawBox(8, 8, 16, 16);
+	SaveToFile("red_box.png");
+	FreeData();
+	m_image_data = new unsigned int[m_width*m_height];
+	DrawDash(8, 0, 32);
+	DrawDot(16, 16);
+	SaveToFile("dashdot.png");
+	FreeData();
+	m_image_data = new unsigned int[m_width*m_height];
+	DrawDot(16, 16);
+	DrawDash(8, 0, 32);
+	SaveToFile("dotdash.png");
+	FreeData();
 }
 
 CwPng::CwPng(unsigned int width, unsigned int height) : CwImage(width, height)

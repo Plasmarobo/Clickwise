@@ -176,9 +176,12 @@ protected:
 	void DrawUnknown(float x, float y, float width, float height);
 	unsigned int DrawSymbol(unsigned int x, unsigned int y, CwSymbol *sym);
 	void SetPixel(unsigned int x, unsigned int y, unsigned int value);
+	void ReadLine(unsigned int width, unsigned int min_x, unsigned int min_y, unsigned int *line);
 	void BltLine(unsigned int width, unsigned int height, unsigned int min_x, unsigned int min_y, unsigned int *line);
 
 	unsigned int RGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+
+	void FreeData();
 public:
 	CwImage(unsigned int width, unsigned int height);
 	
@@ -186,6 +189,8 @@ public:
 
 	void SetBrush(CwSymbolBrush *brush);
 	virtual bool SaveToFile(char* filename);
+
+	void Test();
 
 
 };

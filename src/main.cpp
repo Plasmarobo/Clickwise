@@ -80,14 +80,14 @@ int main(int argc, void * argv)
 		CtSymbols symbols;
 		CtSymbolStream symStr(&symbols);
 		CwSymbolBrush default_brush;
-		default_brush.m_box_color = 0;
-		default_brush.m_width = 16;
-		default_brush.m_height = 80;
+		default_brush.m_box_color = 0x000000FF;
+		default_brush.m_width = 32;
+		default_brush.m_height = default_brush.m_width * 5;
 		default_brush.m_dash_color = 0xFFFFFFFF;
 		default_brush.m_dot_color =  0xFFFFFFFF;
-		default_brush.m_dot_radius = 6;
-		default_brush.m_dash_width = 4;
-		default_brush.m_pad = 3;
+		default_brush.m_dot_radius = 10;
+		default_brush.m_dash_width = 5;
+		default_brush.m_pad = 4;
 		CwImage *img = new CwPng(10,10);
 		img->SetBrush(&default_brush);
 		char a = 'a';
@@ -101,6 +101,7 @@ int main(int argc, void * argv)
 		symStr.Write(knownstring);
 		img->DrawStream(&symStr);
 		img->SaveToFile("all.png");
+		img->Test();
 	}
 
 
