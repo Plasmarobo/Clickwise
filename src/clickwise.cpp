@@ -1,6 +1,7 @@
 #include <queue>
 #include <iostream>
 #include <assert.h>
+#include <algorithm>
 #include "clickwise.h"
 #include "..\dependencies\lodepng\lodepng.h"
 #include "..\dependencies\lodepng\lodepng_util.h"
@@ -270,19 +271,21 @@ CwSymbolBrush::CwSymbolBrush(unsigned int width,
 
 void CwImage::DrawDot(float x, float y)
 {
-	unsigned int min_x = (unsigned int)floor(x - (float)this->m_brush->m_dot_radius);
-	unsigned int max_x = (unsigned int)floor(x + (float)this->m_brush->m_dot_radius);
-	unsigned int min_y = (unsigned int)floor(y - (float)this->m_brush->m_dot_radius);
-	unsigned int max_y = (unsigned int)floor(y + (float)this->m_brush->m_dot_radius);
+	unsigned int min_x = (unsigned int)floor(x - (float)this->m_brush->m_dot_fade_radius);
+	unsigned int max_x = (unsigned int)floor(x + (float)this->m_brush->m_dot_fade_radius);
+	unsigned int min_y = (unsigned int)floor(y - (float)this->m_brush->m_dot_fade_radius);
+	unsigned int max_y = (unsigned int)floor(y + (float)this->m_brush->m_dot_fade_radius);
 	assert(min_x >= 0);
 	assert(max_x <= this->m_width);
 	assert(min_y >= 0);
 	assert(max_y <= this->m_height);
 	//Weird rasterization
 	//Should be improved to a symetrical algorithm
-	unsigned int width = max_x - min_x;
+	unsigned int width = max_x - min_x +1;
 	unsigned int *line = new unsigned int[width];
-	for (unsigned int j = min_y; j < max_y; ++j)
+	float r_f_dist = pow((float)m_brush->m_dot_fade_radius, 2.0f);
+	float r_dist = pow((float)m_brush->m_dot_radius, 2.0f);
+	for (unsigned int j = min_y; j <= max_y; ++j)
 	{
 		this->ReadLine(width, min_x, j, line);
 		for (unsigned int i = 0; i < width; ++i)
@@ -290,11 +293,53 @@ void CwImage::DrawDot(float x, float y)
 			float x_dist = (x - ((float)(min_x + i)));
 			float y_dist = (y - (float)j);
 			float c_dist = pow(x_dist, 2.0f) + pow(y_dist, 2.0f);
-			float r_dist = pow((float)m_brush->m_dot_radius, 2.0f);
-			if (c_dist < r_dist)
+			if (c_dist <= (r_dist + 0.2f))
 			{
-				//TODO: Blending
 				line[i] = this->m_brush->m_dot_color;
+			}
+			else if (c_dist < r_f_dist + 0.5f)
+			{
+				
+				unsigned int r = R(this->m_brush->m_dot_color);
+				unsigned int g = G(this->m_brush->m_dot_color);
+				unsigned int b = B(this->m_brush->m_dot_color);
+				int a = A(this->m_brush->m_dot_color);
+
+				//Fade a with distance
+				// Get a range eqaul to the difference between radii
+				a *= ((r_f_dist + 0.5f) - (c_dist * m_brush->m_dot_fade_strength)) / (r_f_dist + 0.5f - r_dist); // Will range from 0 to slightly less than 1
+				if (a < 0)
+				{
+					continue;
+				}
+
+				unsigned int dest_a = A(line[i]);
+				unsigned int dest_r = R(line[i]);
+				unsigned int dest_g = G(line[i]);
+				unsigned int dest_b = B(line[i]);
+				unsigned int out_a = std::max(dest_a, (unsigned int)a);
+				
+				
+				if (out_a == 0)
+				{
+					line[i] = 0x00000000;
+				}
+				else
+				{
+					float a_dest_weight = (float)dest_a / ((float)dest_a + (float)a);
+					float a_weight = 1.0f - a_dest_weight;
+					unsigned int out_r = ((dest_r *a_dest_weight) + (r * a_weight));
+					unsigned int out_g = (dest_g * a_dest_weight) + (g * a_weight);
+					unsigned int out_b = (dest_b * a_dest_weight) + (b * a_weight);;
+
+
+					line[i] = RGBA(
+						out_r,
+						out_b,
+						out_g,
+						out_a
+						);
+				}
 			}
 		}
 		this->BltLine(width, 1, min_x, j, line);
@@ -305,7 +350,7 @@ void CwImage::DrawDot(float x, float y)
 void CwImage::DrawDash(float x, float y, unsigned int height)
 {
 	unsigned int min_x = (unsigned int)floor(x - ((float)this->m_brush->m_dash_width / 2.0f));
-	unsigned int max_x = (unsigned int)floor(x + ((float)this->m_brush->m_dash_width / 2.0f));
+	unsigned int max_x = (unsigned int)ceil(x + ((float)this->m_brush->m_dash_width / 2.0f));
 	unsigned int min_y = (unsigned int)floor(y);
 	unsigned int max_y = (unsigned int)floor(y) + height;
 	assert(min_x >= 0);
@@ -314,12 +359,12 @@ void CwImage::DrawDash(float x, float y, unsigned int height)
 	assert(max_y <= this->m_height);
 	unsigned int width = max_x - min_x;
 	//unsigned int height = max_y - min_y;
-	unsigned int *line = new unsigned int[width];
-	for (unsigned int i = 0; i < width; ++i)
+	unsigned int *line = new unsigned int[width+1];
+	for (unsigned int i = 0; i < width+1; ++i)
 	{
 		line[i] = this->m_brush->m_dash_color;
 	}
-	this->BltLine(width, height, min_x, min_y, line);
+	this->BltLine(width+1, height, min_x, min_y, line);
 	delete[] line;
 }
 
@@ -451,7 +496,28 @@ void CwImage::BltLine(unsigned int width, unsigned int height, unsigned int min_
 
 unsigned int CwImage::RGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
 {
-	return (0xFF000000 & r << 24) | (0xFF0000 & g << 16) | (0xFF00 & b << 8) | (0xFF & a);
+	//It's actuall ABGR
+	return (0xFF000000 & a << 24) | (0xFF0000 & b << 16) | (0xFF00 & g << 8) | (0xFF & r);
+}
+
+unsigned char CwImage::R(unsigned int color)
+{
+	return color & 0xFF;
+}
+
+unsigned char CwImage::G(unsigned int color)
+{
+	return (color >> 8) & 0xFF;
+}
+
+unsigned char CwImage::B(unsigned int color)
+{
+	return (color >> 16) & 0xFF;
+}
+
+unsigned char CwImage::A(unsigned int color)
+{
+	return (color >> 24) & 0xFF;
 }
 
 void CwImage::FreeData()
@@ -480,7 +546,7 @@ void CwImage::DrawStream(CwSymbolStream * stream)
 	unsigned int *line = new unsigned int[m_width];
 	for (unsigned int i = 0; i < m_width; ++i)
 	{
-		line[i] = 0xFFAAAAAA;
+		line[i] = 0xFF000000; //ABGR
 	}
 	this->BltLine(m_width, m_height, 0, 0, line);
 	delete[] line;
@@ -517,6 +583,7 @@ void CwImage::Test()
 	DrawBox(0, 0, 32, 32);
 	SaveToFile("clear.png");
 	m_brush->m_dot_radius = 4.0f;
+	m_brush->m_dot_fade_radius = 6.0f;
 	DrawDot(16, 16);
 	SaveToFile("dot.png");
 	DrawBox(0, 0, 32, 32);
@@ -531,7 +598,7 @@ void CwImage::Test()
 	FreeData();
 	m_image_data = new unsigned int[m_width*m_height];
 	DrawDot(16, 16);
-	DrawDash(8, 0, 32);
+	DrawDash(16, 0, 32);
 	SaveToFile("dotdash.png");
 	FreeData();
 }

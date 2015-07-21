@@ -180,6 +180,10 @@ protected:
 	void BltLine(unsigned int width, unsigned int height, unsigned int min_x, unsigned int min_y, unsigned int *line);
 
 	unsigned int RGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+	unsigned char R(unsigned int color);
+	unsigned char G(unsigned int color);
+	unsigned char B(unsigned int color);
+	unsigned char A(unsigned int color);
 
 	void FreeData();
 public:

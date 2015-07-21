@@ -86,6 +86,8 @@ int main(int argc, void * argv)
 		default_brush.m_dash_color = 0xFFFFFFFF;
 		default_brush.m_dot_color =  0xFFFFFFFF;
 		default_brush.m_dot_radius = 10;
+		default_brush.m_dot_fade_radius = 14;
+		default_brush.m_dot_fade_strength = 1.25f;
 		default_brush.m_dash_width = 5;
 		default_brush.m_pad = 4;
 		CwImage *img = new CwPng(10,10);
