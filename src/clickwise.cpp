@@ -280,12 +280,13 @@ void CwImage::DrawDot(float x, float y)
 	assert(max_y < this->m_height);
 	//Weird rasterization
 	//Should be improved to a symetrical algorithm
+	float rad = pow((float)this->m_brush->m_dot_radius + 0.51f,2.0f);
 	for (unsigned int j = min_y; j <= max_y; ++j)
 	{
 		for (unsigned int i = min_x; i <= max_x; ++i)
 		{
-			float rad = (float)this->m_brush->m_dot_radius + 0.51f;
-			if ((i*i + j*j) < (rad*rad))
+			float dist = pow(x - i, 2.0f) + pow(y - j, 2.0f);
+			if (dist < rad)
 			{
 				this->SetPixel(i, j, this->m_brush->m_dot_color);
 			}
@@ -390,17 +391,17 @@ unsigned int CwImage::DrawSymbol(unsigned int x, unsigned int y, CwSymbol * sym)
 		float f_x = (float)x + ((float)width / 2.0f);
 		for (int i = 0; i < 5; ++i)
 		{
-			if (val.fields.dash & (1 << i))
+			if (val.fields.dash & (1 << (4-i)))
 			{
 				this->DrawDash(f_x, f_y, cell_height);
 			}
-			if (val.fields.dot & (1 << i))
+			if (val.fields.dot & (1 << (5-i)))
 			{
-				this->DrawDot(f_x, f_y);
+				this->DrawDot(0.0f, 0.0f);
 			}
 			f_y += cell_height;
 		}
-		if (val.fields.dot & (1 << 5))
+		if (val.fields.dot & (0x1))
 		{
 			this->DrawDot(f_x, f_y);
 		}
@@ -415,7 +416,8 @@ void CwImage::SetPixel(unsigned int x, unsigned int y, unsigned int value)
 	assert(x < this->m_width);
 	assert(y > 0);
 	assert(y < this->m_height);
-	this->m_image_data[x + (y*this->m_width)] = value;
+	unsigned int addr = x + (y*this->m_width);
+	this->m_image_data[addr] = value;
 }
 
 void CwImage::BltLine(unsigned int width, unsigned int height, unsigned int min_x, unsigned int min_y, unsigned int * line)
@@ -452,7 +454,7 @@ void CwImage::DrawStream(CwSymbolStream * stream)
 	unsigned int *line = new unsigned int[m_width];
 	for (unsigned int i = 0; i < m_width; ++i)
 	{
-		line[i] = 0xAAAAAAFF;
+		line[i] = 0xFFAAAAAA;
 	}
 	this->BltLine(m_width, m_height, 0, 0, line);
 	delete[] line;

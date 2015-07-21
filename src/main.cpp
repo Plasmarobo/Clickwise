@@ -84,7 +84,7 @@ int main(int argc, void * argv)
 		default_brush.m_width = 16;
 		default_brush.m_height = 80;
 		default_brush.m_dash_color = 0xFFFFFFFF;
-		default_brush.m_dot_color = 0xFFFFFFFF;
+		default_brush.m_dot_color =  0xFFFFFFFF;
 		default_brush.m_dot_radius = 6;
 		default_brush.m_dash_width = 4;
 		default_brush.m_pad = 3;
