@@ -2,6 +2,9 @@
 #include "clocktalk.h"
 #include <iostream>
 #include <string>
+
+
+#include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
 
 
@@ -11,7 +14,7 @@ int main(int argc, void *argv)
 	CwImage render(180,180);
 	std::string buffer;
 	std::cout << "Enter text for translation (\\q to quit)" << std::endl << ">";
-	while (std::cin >> buffer, buffer != "\q")
+	while (std::cin >> buffer, buffer != "\\q")
 	{
 		CtSymbolStream stream(&symbols);
 		stream.Write(buffer.c_str());
