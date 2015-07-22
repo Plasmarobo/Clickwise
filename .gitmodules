@@ -1,3 +1,9 @@
 [submodule "dependencies/lodepng"]
 	path = dependencies/lodepng
 	url = git@github.com:lvandeve/lodepng.git
+[submodule "dependencies/wxWidgets"]
+	path = dependencies/wxWidgets
+	url = git@github.com:wxWidgets/wxWidgets.git
+[submodule "dependencies/SFML"]
+	path = dependencies/SFML
+	url = git@github.com:SFML/SFML.git

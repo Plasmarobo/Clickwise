@@ -333,7 +333,7 @@ void CwImage::DrawDot(float x, float y)
 					unsigned int out_b = (dest_b * a_dest_weight) + (b * a_weight);;
 
 
-					line[i] = RGBA(
+					line[i] = ABGR(
 						out_r,
 						out_b,
 						out_g,
@@ -494,7 +494,7 @@ void CwImage::BltLine(unsigned int width, unsigned int height, unsigned int min_
 	}
 }
 
-unsigned int CwImage::RGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
+unsigned int CwImage::ABGR(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
 {
 	//It's actuall ABGR
 	return (0xFF000000 & a << 24) | (0xFF0000 & b << 16) | (0xFF00 & g << 8) | (0xFF & r);
@@ -567,9 +567,45 @@ void CwImage::SetBrush(CwSymbolBrush * brush)
 	m_brush = brush;
 }
 
+unsigned char * CwImage::GetRGBAImage()
+{
+	unsigned char *new_image = new unsigned char[m_width * m_height * 4];
+	for (int j = 0; j < m_height; ++j)
+	{
+		for (int i = 0; i < m_width; ++i)
+		{
+
+			unsigned char r = R(m_image_data[(j*m_width) + i]);
+			unsigned char g = G(m_image_data[(j*m_width) + i]);
+			unsigned char b = B(m_image_data[(j*m_width) + i]);
+			unsigned char a = A(m_image_data[(j*m_width) + i]);
+			new_image[(j*m_width) + i * 4] = r;
+			new_image[(j*m_width) + i * 4] = g;
+			new_image[(j*m_width) + i * 4] = b;
+			new_image[(j*m_width) + i * 4] = a;
+		}
+	}
+	return new_image;
+}
+
 bool CwImage::SaveToFile(char * filename)
 {
 	return false;
+}
+
+unsigned int CwImage::GetWidth()
+{
+	return m_width;
+}
+
+unsigned int CwImage::GetHeight()
+{
+	return m_height;
+}
+
+unsigned int CwImage::GetSize()
+{
+	return m_width * m_height * sizeof(unsigned long);
 }
 
 void CwImage::Test()
