@@ -169,6 +169,7 @@ protected:
 	unsigned int   m_height;
 	unsigned int   m_width;
 	unsigned int   m_background_color;
+	static CwSymbolBrush m_default_brush;
 	CwSymbolBrush *m_brush;
 	void DrawDot(float x, float y);
 	void DrawDash(float x, float y, unsigned int height);
@@ -193,7 +194,8 @@ public:
 
 	void SetBrush(CwSymbolBrush *brush);
 	unsigned char* GetRGBAImage();
-	virtual bool SaveToFile(char* filename);
+	virtual bool SaveToFile(const char* filename);
+	virtual void* GetEncodedImage();
 	unsigned int GetWidth();
 	unsigned int GetHeight();
 	unsigned int GetSize();
@@ -207,6 +209,8 @@ class CwPng : public CwImage
 {
 public:
 	CwPng(unsigned int width, unsigned int height);
-	virtual bool SaveToFile(char *filename);
+	virtual bool SaveToFile(const char *filename);
+	virtual void* GetEncodedImage();
+
 };
 #endif

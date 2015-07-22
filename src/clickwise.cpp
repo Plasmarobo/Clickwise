@@ -529,11 +529,24 @@ void CwImage::FreeData()
 	}
 }
 
+CwSymbolBrush CwImage::m_default_brush;
+
 CwImage::CwImage(unsigned int width, unsigned int height)
 {
 	m_width = width;
 	m_height = height;
 	m_image_data = NULL;
+	m_default_brush.m_box_color = 0x000000FF;
+	m_default_brush.m_width = 32;
+	m_default_brush.m_height = m_default_brush.m_width * 5;
+	m_default_brush.m_dash_color = 0xFFFFFFFF;
+	m_default_brush.m_dot_color = 0xFFFFFFFF;
+	m_default_brush.m_dot_radius = 10;
+	m_default_brush.m_dot_fade_radius = 14;
+	m_default_brush.m_dot_fade_strength = 1.25f;
+	m_default_brush.m_dash_width = 5;
+	m_default_brush.m_pad = 4;
+	m_brush = &m_default_brush;
 }
 
 void CwImage::DrawStream(CwSymbolStream * stream)
@@ -579,18 +592,22 @@ unsigned char * CwImage::GetRGBAImage()
 			unsigned char g = G(m_image_data[(j*m_width) + i]);
 			unsigned char b = B(m_image_data[(j*m_width) + i]);
 			unsigned char a = A(m_image_data[(j*m_width) + i]);
-			new_image[(j*m_width) + i * 4] = r;
-			new_image[(j*m_width) + i * 4] = g;
-			new_image[(j*m_width) + i * 4] = b;
-			new_image[(j*m_width) + i * 4] = a;
+			new_image[(j*m_width) + (i * 4)+0] = r;
+			new_image[(j*m_width) + (i * 4)+1] = g;
+			new_image[(j*m_width) + (i * 4)+2] = b;
+			new_image[(j*m_width) + (i * 4)+3] = a;
 		}
 	}
 	return new_image;
 }
 
-bool CwImage::SaveToFile(char * filename)
+bool CwImage::SaveToFile(const char * filename)
 {
 	return false;
+}
+void* CwImage::GetEncodedImage()
+{
+	return NULL;
 }
 
 unsigned int CwImage::GetWidth()
@@ -643,7 +660,7 @@ CwPng::CwPng(unsigned int width, unsigned int height) : CwImage(width, height)
 {
 }
 
-bool CwPng::SaveToFile(char * filename)
+bool CwPng::SaveToFile(const char * filename)
 {
 	unsigned char* image_data = reinterpret_cast<unsigned char*>(m_image_data);
 	unsigned int error = lodepng::encode(filename, image_data, m_width, m_height);
@@ -656,5 +673,23 @@ bool CwPng::SaveToFile(char * filename)
 	else
 	{
 		return true;
+	}
+}
+
+void *CwPng::GetEncodedImage()
+{
+	unsigned char *ptr = new unsigned char[m_width * m_height * 4];
+	unsigned int size = GetSize();
+	unsigned char* image_data = reinterpret_cast<unsigned char*>(m_image_data);
+	unsigned int error = lodepng_encode32(&ptr, &size, image_data, m_width, m_height);
+	if (error)
+	{
+		std::cout << "Encoder Error" << error << ":" << lodepng_error_text(error) << std::endl;
+		system("pause");
+		return NULL;
+	}
+	else
+	{
+		return (void*)ptr;
 	}
 }
