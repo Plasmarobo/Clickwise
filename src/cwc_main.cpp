@@ -15,7 +15,8 @@ int main(int argc, void *argv)
 	std::string buffer;
 	sf::Texture texture;
 	std::cout << "Enter text for translation (\\q to quit)" << std::endl << ">";
-	while (std::cin >> buffer, buffer != "\\q")
+	char buf[128];
+	while (std::cin.getline(buf, 128), buffer = std::string(buf), buffer != "")
 	{
 		CtSymbolStream stream(&symbols);
 		stream.Write(buffer.c_str());

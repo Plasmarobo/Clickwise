@@ -186,6 +186,8 @@ protected:
 	unsigned char B(unsigned int color);
 	unsigned char A(unsigned int color);
 
+	unsigned int GetSymWidth(CwValue &sym);
+
 	void FreeData();
 public:
 	CwImage(unsigned int width, unsigned int height);

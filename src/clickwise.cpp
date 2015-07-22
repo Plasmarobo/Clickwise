@@ -5,6 +5,7 @@
 #include "clickwise.h"
 #include "..\dependencies\lodepng\lodepng.h"
 #include "..\dependencies\lodepng\lodepng_util.h"
+#include <stack>
 
 void CwSymbol::SetSym(unsigned char height, unsigned char width, unsigned char dot, unsigned char dash, unsigned char unknown)
 {
@@ -293,7 +294,7 @@ void CwImage::DrawDot(float x, float y)
 			float x_dist = (x - ((float)(min_x + i)));
 			float y_dist = (y - (float)j);
 			float c_dist = pow(x_dist, 2.0f) + pow(y_dist, 2.0f);
-			if (c_dist <= (r_dist + 0.2f))
+			if (c_dist < (r_dist))
 			{
 				line[i] = this->m_brush->m_dot_color;
 			}
@@ -337,7 +338,7 @@ void CwImage::DrawDot(float x, float y)
 						out_r,
 						out_b,
 						out_g,
-						out_a
+						0xFF
 						);
 				}
 			}
@@ -393,7 +394,7 @@ void CwImage::DrawUnknown(float x, float y, float width, float height)
 	unsigned int *line = new unsigned int[aligned_width];
 	for (int i = 0; i < width; ++i)
 	{
-		line[i] = 0xFF0000FF;
+		line[i] = 0xFF0000CC;
 	}
 	this->BltLine(aligned_width, (unsigned int)ceil(height), min_x, min_y, line);
 	delete[] line;
@@ -411,30 +412,7 @@ unsigned int CwImage::DrawSymbol(unsigned int x, unsigned int y, CwSymbol * sym)
 	else
 	{
 		unsigned int height = (val.fields.height == CW_SHORT) ? (unsigned int)floor((float)m_brush->m_height * CW_SHORT_COEFF) : m_brush->m_height;
-		unsigned int width = m_brush->m_width;
-		switch (val.fields.width)
-		{
-		case CW_SPACE:
-			return width = (unsigned int)floor((float)width * CW_TINY_COEFF);
-		case CW_FINE:
-			width = (unsigned int)floor((float)width * CW_FINE_COEFF);
-			break;
-		case CW_TINY:
-			width = (unsigned int)floor((float)width * CW_TINY_COEFF);
-			break;
-		case CW_SMALL:
-			width = (unsigned int)floor((float)width * CW_SMALL_COEFF);
-			break;
-		case CW_MED:
-			width = (unsigned int)floor((float)width * CW_MED_COEFF);
-			break;
-		case CW_MAX:
-			width = (unsigned int)floor((float)width * CW_MAX_COEFF);
-			break;
-		default:
-			assert(false);
-			break;
-		}
+		unsigned int width = GetSymWidth(val);
 		this->DrawBox(x, y, width, height);
 		//Divide height into cells
 		unsigned int cell_height = height / 6;
@@ -520,6 +498,35 @@ unsigned char CwImage::A(unsigned int color)
 	return (color >> 24) & 0xFF;
 }
 
+unsigned int CwImage::GetSymWidth(CwValue &val)
+{
+	unsigned int width = m_brush->m_width;
+	switch (val.fields.width)
+	{
+	case CW_SPACE:
+		return width = (unsigned int)floor((float)width * CW_TINY_COEFF);
+	case CW_FINE:
+		width = (unsigned int)floor((float)width * CW_FINE_COEFF);
+		break;
+	case CW_TINY:
+		width = (unsigned int)floor((float)width * CW_TINY_COEFF);
+		break;
+	case CW_SMALL:
+		width = (unsigned int)floor((float)width * CW_SMALL_COEFF);
+		break;
+	case CW_MED:
+		width = (unsigned int)floor((float)width * CW_MED_COEFF);
+		break;
+	case CW_MAX:
+		width = (unsigned int)floor((float)width * CW_MAX_COEFF);
+		break;
+	default:
+		assert(false);
+		break;
+	}
+	return width;
+}
+
 void CwImage::FreeData()
 {
 	if (m_image_data != NULL)
@@ -536,41 +543,59 @@ CwImage::CwImage(unsigned int width, unsigned int height)
 	m_width = width;
 	m_height = height;
 	m_image_data = NULL;
-	m_default_brush.m_box_color = 0x000000FF;
-	m_default_brush.m_width = 32;
+	m_default_brush.m_box_color = 0xFF000000; //ABGR
+	m_default_brush.m_width = 20;
 	m_default_brush.m_height = m_default_brush.m_width * 5;
 	m_default_brush.m_dash_color = 0xFFFFFFFF;
 	m_default_brush.m_dot_color = 0xFFFFFFFF;
-	m_default_brush.m_dot_radius = 10;
-	m_default_brush.m_dot_fade_radius = 14;
-	m_default_brush.m_dot_fade_strength = 1.25f;
-	m_default_brush.m_dash_width = 5;
-	m_default_brush.m_pad = 4;
+	m_default_brush.m_dot_radius = 5;
+	m_default_brush.m_dot_fade_radius = 7;
+	m_default_brush.m_dot_fade_strength = 1.0f;
+	m_default_brush.m_dash_width = 2;
+	m_default_brush.m_pad = 2;
 	m_brush = &m_default_brush;
 }
 
 void CwImage::DrawStream(CwSymbolStream * stream)
 {
 	FreeData();
-	unsigned int length = stream->Size();
-	this->m_width = ((this->m_brush->m_pad + this->m_brush->m_width) * length) + this->m_brush->m_pad;
+	CwSymbol current;
+	std::queue<CwSymbol> sym_queue;
+	unsigned int w = 0;
+	while (stream->Size() > 0)
+	{
+		
+		stream->Read(&current);
+		sym_queue.push(current);
+		w += GetSymWidth(current.Value());
+	}
+
+	this->m_width = w + ((this->m_brush->m_pad * sym_queue.size()) + this->m_brush->m_pad);
 	this->m_height = (this->m_brush->m_pad * 2) + this->m_brush->m_height;
 	m_image_data = new unsigned int[m_width*m_height];
 	unsigned int *line = new unsigned int[m_width];
 	for (unsigned int i = 0; i < m_width; ++i)
 	{
-		line[i] = 0xFF000000; //ABGR
+		line[i] = 0x00000000; //ABGR
 	}
 	this->BltLine(m_width, m_height, 0, 0, line);
 	delete[] line;
 	unsigned int y = this->m_brush->m_pad;
 	unsigned int x = this->m_brush->m_pad;
 	unsigned int width = 0;
-	while (stream->Size() > 0)
+	
+	while (sym_queue.size() > 0)
 	{
-		CwSymbol current;
-		stream->Read(&current);
-		width = this->DrawSymbol(x, y, &current);
+		current = sym_queue.front();
+		sym_queue.pop();
+		if (current.Value().fields.width != 0)
+		{
+			width = this->DrawSymbol(x, y, &current);
+		}
+		else
+		{
+			width = GetSymWidth(current.Value());
+		}
 		x += this->m_brush->m_pad + width;
 	}
 }
@@ -640,7 +665,7 @@ void CwImage::Test()
 	DrawDot(16, 16);
 	SaveToFile("dot.png");
 	DrawBox(0, 0, 32, 32);
-	m_brush->m_box_color = 0xFF0000FF;
+	m_brush->m_box_color = 0xFF0000CC;
 	DrawBox(8, 8, 16, 16);
 	SaveToFile("red_box.png");
 	FreeData();
